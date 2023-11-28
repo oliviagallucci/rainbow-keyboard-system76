@@ -1,6 +1,7 @@
-import subprocess
 import sys
 import os
+import json
+import subprocess
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -96,6 +97,32 @@ def install_deb_file(deb_file_path):
         print(f"command returned non-zero exit status {e.returncode}.")
         print(f"output: {e.output.decode('utf-8')}")
 
+def update_mode(filepath, filename):
+    try:
+        # construct the full path to the file
+        full_path = os.path.join(filepath, filename)
+
+        # open the file and load the JSON data
+        with open(full_path, 'r') as file:
+            data = json.load(file)
+
+        # update the "Mode" value
+        if "Mode" in data:
+            data["Mode"] = "Rainbow"
+
+        # write the updated data back to the file
+        with open(full_path, 'w') as file:
+            json.dump(data, file, indent=4)
+
+        print(f'successfully updated "Mode" to "Rainbow" in {full_path}')
+
+    except FileNotFoundError:
+        print(f'error: File "{full_path}" not found.')
+    except json.JSONDecodeError:
+        print(f'error: Unable to parse JSON in "{full_path}"')
+    except Exception as e:
+        print(f'an error occurred: {e}')
+
 def deactivate_virtual_environment():
     # check if the script is running in a virtual environment
     if hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix):
@@ -111,6 +138,15 @@ def deactivate_virtual_environment():
             print(f"error deactivating virtual environment: {e}")
     else:
         print("not currently in a virtual environment.")
+
+def restart_keyboard_colors():
+    command = "sudo systemctl restart keyboard-colors"
+    
+    try:
+        subprocess.run(command, shell=True, check=True)
+        print("keyboard colors restarted successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"error restarting keyboard colors: {e}")
 
 if __name__ == "__main__":
     # create a new python environment 
@@ -132,6 +168,16 @@ if __name__ == "__main__":
     deb_file_path = os.path.join(downloads_folder, deb_file_name)
 
     install_deb_file(deb_file_path)
+
+    # original file: https://github.com/withinboredom/system-76-keyboards/blob/master/csharp/keyboards/settings.json
+    # located approx here on machine: /etc/keyboard-colors.json
+    filepath = "/etc/"
+    filename = "keyboard-colors.json"
+    update_mode(filepath, filename)
+
+    # restart keyboard service 
+    # sudo systemctl restart keyboard-colors 
+    restart_keyboard_colors()
 
     # end virtual environment 
     deactivate_virtual_environment()
